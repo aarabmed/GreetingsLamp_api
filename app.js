@@ -8,14 +8,32 @@ const tagRoute = require('./routes/tag');
 const cardRoute = require('./routes/card');
 const accountRoute = require('./routes/account');
 const collectionRoute = require('./routes/collection');
-const sessionRoute = require('./routes/session')
+const sessionRoute = require('./routes/session');
+const  cors = require('cors')
  
 const app = express();
 // app.use(express.json());
 app.use(bodyParser.urlencoded({extended: true}));
 app.use(bodyParser.json());
 
-app.use((req, res, next) => {
+
+const whitelist = ['http://localhost:7000',]
+const corsOptions = {
+    origin: (origin, callback) => {
+        if (whitelist.indexOf(origin) !== -1 || !origin) {
+            callback(null, true)
+            console.log('Hello',origin)
+        } else {
+            console.log('error',origin)
+            callback(new Error())
+        }
+    },
+    optionsSuccessStatus: 200 
+}
+
+app.use(cors(corsOptions))
+/* 
+app.use(cors(corsOptions),(req, res, next) => {
       
     res.header("Access-Control-Allow-Origin", "*");
     res.header(
@@ -29,8 +47,7 @@ app.use((req, res, next) => {
     next();
 
    // console.log("Req:",req)
-
-});
+});  */
 
 app.use("/account",accountRoute);
 app.use("/users",userRoutes);
