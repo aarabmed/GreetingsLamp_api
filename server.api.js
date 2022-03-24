@@ -24,7 +24,6 @@ const databaseUrl = process.env.DATABASE_URL;
 
 const server = express()
 server.use(cors(corsOptions),app)
-server.use(cors(corsOptions),'/images',express.static('./images'));
 
 mongoose.connect(databaseUrl, {useUnifiedTopology: true,useNewUrlParser: true , useFindAndModify: false }).then(()=>{
     server.listen(port,()=>{
