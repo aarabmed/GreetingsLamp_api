@@ -48,10 +48,10 @@ exports.userLogin = async (req, res, next) => {
         })
     }
 
-    const {authority,_id,avatar}= user;
+    const {authority,_id,avatar,email}= user;
     const userId =_id.toString();
     const token = await jwt.sign({userId,userName},process.env.JWT_SECRETCODE,{expiresIn:'60 min'})
-    user.validToken = true;
+    // user.validToken = true;
     await user.save();
     const data = {
         userId,
@@ -60,20 +60,17 @@ exports.userLogin = async (req, res, next) => {
         authority,
         avatar,
         validToken:true,
+        email
     }
 
-    const securedData = {token,authority}
-
-    const userSession = req.session.get('userSession');
+    const securedData = {token,authority}    
     
-    if(userSession){
-        req.session.set("userSession", {...userSession,securedData:securedData});
-    }else{ 
-        req.session.set("userSession", securedData)
-    }
+    req.session.set("userSession", securedData);
+
     
     await req.session.save();
-
+    
+    console.log('userSession:',req.session.get("userSession"))
     return res.json({
         data,
         status:200,

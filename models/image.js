@@ -11,3 +11,4 @@ const imageType = mongoose.Schema({
 });
 
 module.exports = imageType
+

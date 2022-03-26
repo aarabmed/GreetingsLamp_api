@@ -1,6 +1,5 @@
 const express = require("express");
 const router = express.Router();
-
 const {WithuAuthSession} = require("../utils/session")
 
 
@@ -14,7 +13,7 @@ router.get("/",WithuAuthSession(async (req,res)=>{
         })
     }
     return res.status(200).json({
-        session:req.session.get('userSession'),
+        message:'you are logged in',
         status:200
     })
 }));
