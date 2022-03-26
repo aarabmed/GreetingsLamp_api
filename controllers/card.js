@@ -1,5 +1,6 @@
 const Card  =  require('../models/card');
 const {Category,SubCategory,SubCategoryChild}  =  require('../models/category');
+const Collection = require("../models/collection")
 const User = require('../models/user');
 const Tag = require('../models/tag');
 const Image = require('../models/image');

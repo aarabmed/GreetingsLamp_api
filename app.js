@@ -8,15 +8,33 @@ const tagRoute = require('./routes/tag');
 const cardRoute = require('./routes/card');
 const accountRoute = require('./routes/account');
 const collectionRoute = require('./routes/collection');
-const sessionRoute = require('./routes/session')
+const sessionRoute = require('./routes/session');
+const {WithuAuthSession} = require("./utils/session")
+
+const  cors = require('cors')
  
 const app = express();
 // app.use(express.json());
 app.use(bodyParser.urlencoded({extended: true}));
 app.use(bodyParser.json());
 
-app.use((req, res, next) => {
-      
+
+const whitelist = ['http://localhost:7000','https://greetingslamp-admin.herokuapp.com']
+const corsOptions = {
+    origin: (origin, callback) => {
+        if (whitelist.indexOf(origin) !== -1 || !origin) {
+            callback(null, true)
+            console.log('Hello',origin)
+        } else {
+            console.log('error',origin)
+            callback(new Error())
+        }
+    },
+    optionsSuccessStatus: 200 
+}
+
+app.use(cors(corsOptions))
+/* app.use((req,res,next)=>{
     res.header("Access-Control-Allow-Origin", "*");
     res.header(
       "Access-Control-Allow-Headers",
@@ -26,11 +44,8 @@ app.use((req, res, next) => {
       res.header("Access-Control-Allow-Methods", "PUT, POST, PATCH, DELETE, GET");
       return res.status(200).json({});
     }
-    next();
-
-   // console.log("Req:",req)
-
-});
+    next()
+}) */
 
 app.use("/account",accountRoute);
 app.use("/users",userRoutes);
