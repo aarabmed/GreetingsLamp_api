@@ -42,8 +42,6 @@ exports.createMutipleTags = async (req, res, next) => {
         return str.charAt(0).toUpperCase() + str.slice(1);
     }
 
-    console.log('NAMES:',names)
-
     const tags = names.map(name=>name.split(' ').map(capitalize).join(' '));
     const filtredTags = await Tag.find({name:{$in:tags}})
     const newTags = tags.filter(tag=>!filtredTags.includes(tag)).map(name=>({name:name,slug:name.split(' ').join('-').toLowerCase(),status:true,createdBy:currentUserId}))

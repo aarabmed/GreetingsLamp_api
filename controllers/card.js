@@ -1007,7 +1007,7 @@ exports.updateCard = async (req, res, next) => {
     
             card.image = uploadImage
             const updatedCard = await card.save().then(card=>card.populate(['category','subCategory','subCategoryChildren','tags','createdBy']).execPopulate())
-            console.log('UpdatedCard:',updatedCard)
+
             if(updatedCard){
                 return res.status(200).json({
                     data:updatedCard,
@@ -1062,13 +1062,3 @@ exports.deleteCard = async (req, res, next) => {
     })
 }
 
-exports.getImage = async (req, res, next) => {
-    const image = req.body.image;
-
-    
-
-    return res.status(200).json({
-        message: "image uploaded",
-        image
-    })
-}

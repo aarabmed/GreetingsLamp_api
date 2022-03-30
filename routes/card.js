@@ -17,8 +17,6 @@ router.get("/:id", getCard);
 
 router.post("/new", checkAuth,uploadImage('cardImage'), createCard);
 
-router.post("/image/new",uploadImage('uploadImage'), getImage);
-
 router.patch("/views",WithPublicSession(onView));
 
 router.patch("/download",WithPublicSession(onDownload));

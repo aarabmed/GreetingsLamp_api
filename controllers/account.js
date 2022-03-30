@@ -70,7 +70,6 @@ exports.userLogin = async (req, res, next) => {
     
     await req.session.save();
     
-    console.log('userSession:',req.session.get("userSession"))
     return res.json({
         data,
         status:200,
