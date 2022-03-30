@@ -7,7 +7,7 @@ function WithuAuthSession(handler){
     return withIronSession(handler,{
         cookieName: "userSession",
         password: process.env.USER_SESSION,
-        ttl:60*60,
+        ttl:60*120,
         cookieOptions: {
             secure: false,
             httpOnly: true,

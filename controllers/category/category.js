@@ -7,8 +7,17 @@ const User = require('../../models/user');
 const validate = require('../../utils/inputErrors');
 const {authorities}= require('../../utils/authority')
 const isBoolean = require('../../utils/toBoolean');
+const ImageKit = require("imagekit");
 
 const {nameProperties,statusProperties,titleProperties,bgColorProperties,descriptionProperties,imageProperties,slugProperties} = require('../inputs/category')
+
+
+
+const imagekit = new ImageKit({
+    publicKey : process.env.PUBLICKEY,
+    privateKey :process.env.PRIVATEKEY,
+    urlEndpoint : process.env.URL_ENDPOINT
+});
 
 
 //! ----- RETRIEVE A SINGLE CATEGORY ----------
@@ -16,10 +25,8 @@ exports.getCategory = async (req, res, next) => {
     const id = req.params.id
     const category = await Category.findById({_id:id},{deleted:false})
     .populate([
-        {path:"image",model:'Image'},
-        {path:"subCategory",select:"name status slug description title backgroundColor createdAt updatedAt",model:'SubCategory',match:{deleted:false},populate:{path:"image",model:'Image'}},
-        {path:"related.relatedTo",match:{deleted:false},populate:{path:"image",model:'Image'}},
-        {path:"collectionName",model:'Collection',match:{deleted:false},populate:{path:"image",model:'Image'}}
+        {path:"subCategory",select:"image name status slug description title backgroundColor createdAt updatedAt",model:'SubCategory',match:{deleted:false}},
+        {path:"collectionName",model:'Collection',match:{deleted:false}}
     ]);
   
     return res.status(200).json({
@@ -32,17 +39,14 @@ exports.getCategory = async (req, res, next) => {
 exports.getAllCategories = async (req, res, next) => {
     const categories = await Category.find({deleted:false})
         .populate([
-            {path:"image",model:'Image'},
             {  
-                path:"subCategory",select:"name status slug description title backgroundColor createdAt updatedAt ",model:'SubCategory',match:{deleted:false},
+                path:"subCategory",select:"image name status slug description title backgroundColor createdAt updatedAt ",model:'SubCategory',match:{deleted:false},
                 populate:[{
                     path:"childrenSubCategory",
-                    select:"name status slug backgroundColor title description createdAt updatedAt",
+                    select:"image name status slug backgroundColor title description createdAt updatedAt",
                     model:'ChildrenSubCategory',
                     match:{deleted:false},
-                    populate:{path:"image",model:'Image'}
-                },
-                {path:"image",model:'Image'}],
+                }],
             },
         ]);
     
@@ -106,36 +110,55 @@ exports.createCategory = async (req, res, next) => {
     }
 
    
-
-
-    const category = await new Category({
-        name:newName,
-        description,
-        image:categoryImage,
-        title:newTitle,
-        slug:newSlug,
-        backgroundColor:bgColor??bgColor,
-        createdBy:currentUserId,
-        collectionName:collectionId
-    })
-
-
-
-    const savedCategory  = await category.save();
-    
-    if(!savedCategory){
-        return res.status(500).json({
-            category:null,
-            errors:{message:'Server failed to create the new category'}
+    imagekit.upload({
+        file : categoryImage.buffer, //required
+        fileName : categoryImage.fileName, //required
+        folder: categoryImage.folderName,
+    }, async function(error, result) {
+        if(error) return res.status(500).json({
+            errors:error.message,
+            card:null,
         })
-    }
 
-    await Collection.findByIdAndUpdate(collectionId,{ $push: {"category": savedCategory._id } })
+        const uploadImage = {
+            fileId:result.fileId,
+            name:result.name,
+            filePath:result.filePath,
+            url:result.url,
+            height:result.height,
+            width:result.width,
+            thumbnailUrl:result.thumbnailUrl
+        }
+
+        const category = await new Category({
+            name:newName,
+            description,
+            image:uploadImage,
+            title:newTitle,
+            slug:newSlug,
+            backgroundColor:bgColor??bgColor,
+            createdBy:currentUserId,
+            collectionName:collectionId
+        })
+
+        const savedCategory  = await category.save();
     
-    return res.status(201).json({
-        category:savedCategory,
-        message:'Category saved successfully'
+        if(!savedCategory){
+            return res.status(500).json({
+                category:null,
+                errors:{message:'Server failed to create the new category'}
+            })
+        }
+
+        await Collection.findByIdAndUpdate(collectionId,{ $push: {"category": savedCategory._id } })
+        
+        return res.status(201).json({
+            category:savedCategory,
+            message:'Category saved successfully'
+        })
+
     })
+    
 }
 
 
@@ -202,8 +225,48 @@ exports.updateCategory = async (req, res, next) => {
     category.title = newTitle;
     category.backgroundColor = bgColor
     category.updatedBy=currentUserId;
-    categoryImage?category.image = categoryImage:null;
 
+    const isObject = (value) => typeof value === "object" && value !== null
+
+    if(isObject(categoryImage)){
+        imagekit.upload({
+            file : categoryImage.buffer, //required
+            fileName : categoryImage.fileName, //required
+            folder: categoryImage.folderName,
+        }, async function(error, result) {
+            if(error) return res.status(500).json({
+                errors:error.message,
+                card:null,
+            })
+    
+            const uploadImage = {
+                fileId:result.fileId,
+                name:result.name,
+                filePath:result.filePath,
+                url:result.url,
+                height:result.height,
+                width:result.width,
+                thumbnailUrl:result.thumbnailUrl
+            }
+
+            category.image = uploadImage;
+            const updatedCategory  = await category.save();
+            if(!updatedCategory){
+                return res.status(500).json({
+                    errors:{message:'Server failed while editing the category'},
+                    category:null
+                })
+            }
+        
+        
+        
+            return res.status(200).json({
+                category:updatedCategory,
+                message:'Category updated successfully'
+            })
+        
+        })
+    }
     const updatedCategory  = await category.save();
     if(!updatedCategory){
         return res.status(500).json({

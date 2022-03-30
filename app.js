@@ -24,9 +24,8 @@ const corsOptions = {
     origin: (origin, callback) => {
         if (whitelist.indexOf(origin) !== -1 || !origin) {
             callback(null, true)
-            console.log('Hello',origin)
+           
         } else {
-            console.log('error',origin)
             callback(new Error())
         }
     },

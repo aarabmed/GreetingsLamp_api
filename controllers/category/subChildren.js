@@ -2,15 +2,21 @@
 const {SubCategoryChild, SubCategory} = require('../../models/category');
 const User = require('../../models/user');
 const Image = require('../../models/image');
-
 const validate = require('../../utils/inputErrors');
 const isBoolean = require('../../utils/toBoolean');
-
-
 const {authorities} = require('../../utils/authority');
+const ImageKit = require("imagekit");
 
 const {descriptionProperties,titleProperties,bgColorProperties,statusProperties,imageProperties,slugProperties,nameProperties} = require('../inputs/subChildren')
 
+
+
+
+const imagekit = new ImageKit({
+    publicKey : process.env.PUBLICKEY,
+    privateKey :process.env.PRIVATEKEY,
+    urlEndpoint : process.env.URL_ENDPOINT
+});
 
 
 //! ----- RETRIEVE A SINGLE SUB-CATEGORY-CHILD ----------
@@ -20,7 +26,7 @@ const {descriptionProperties,titleProperties,bgColorProperties,statusProperties,
 
 //! ----- RETRIEVE ALL SUB-CATEGORIES-CHILDREN ----------
 exports.getAllSubChildren = async (req, res, next) => {
-    const subChildren = await SubCategoryChild.find({deleted:false}).populate({path:"image",model:'Image'});
+    const subChildren = await SubCategoryChild.find({deleted:false});
   
     return res.status(200).json({
         subCategoryChildren:subChildren,
@@ -68,31 +74,52 @@ exports.createSubCategoryChild = async (req, res, next) => {
     const newTitle= title.trim().split(' ').map(capitalize).join(' ');
 
     
-    const subCategoryChild = await new SubCategoryChild({
-        name:newName,
-        title:newTitle,
-        slug:newSlug,
-        description,
-        image:subCategoryChildImage,
-        backgroundColor:bgColor,
-        subCategory:subCategoryId,
-        createdBy:currentUserId,
-    })
-
-    
-    const savedSubCategoryChild  = await subCategoryChild.save();
-    if(!savedSubCategoryChild){
-        return res.status(500).json({
-            data:null,
-            errors:{message:'Server failed to save the new sub Category Child'}
+    imagekit.upload({
+        file : subCategoryChildImage.buffer, //required
+        fileName : subCategoryChildImage.fileName, //required
+        folder: subCategoryChildImage.folderName,
+    },async function(error, result) {
+        if(error) return res.status(500).json({
+            errors:error.message,
+            card:null,
         })
-    }
 
-    await SubCategory.findByIdAndUpdate(subCategoryId,{$push:{'childrenSubCategory':savedSubCategoryChild._id}})
-    return res.status(201).json({
-        data:savedSubCategoryChild,
-        message:'sub Category Child saved successfully'
+        const uploadImage = {
+            fileId:result.fileId,
+            name:result.name,
+            filePath:result.filePath,
+            url:result.url,
+            height:result.height,
+            width:result.width,
+            thumbnailUrl:result.thumbnailUrl
+        }
+        const subCategoryChild = await new SubCategoryChild({
+            name:newName,
+            title:newTitle,
+            slug:newSlug,
+            description,
+            image:uploadImage,
+            backgroundColor:bgColor,
+            subCategory:subCategoryId,
+            createdBy:currentUserId,
+        })
+    
+        
+        const savedSubCategoryChild  = await subCategoryChild.save();
+        if(!savedSubCategoryChild){
+            return res.status(500).json({
+                data:null,
+                errors:{message:'Server failed to save the new sub Category Child'}
+            })
+        }
+    
+        await SubCategory.findByIdAndUpdate(subCategoryId,{$push:{'childrenSubCategory':savedSubCategoryChild._id}})
+        return res.status(201).json({
+            data:savedSubCategoryChild,
+            message:'sub Category Child saved successfully'
+        })
     })
+    
 }
 
 
@@ -160,8 +187,48 @@ exports.updateSubCategoryChild = async (req, res, next) => {
     subCategoryChild.name = newName;
     subCategoryChild.status = status;
     subCategoryChild.backgroundColor = bgColor
-    subCategoryChildImage?subCategoryChild.image:null
 
+    const isObject = (value) => typeof value === "object" && value !== null
+
+    if(isObject(subCategoryChildImage)){
+        imagekit.upload({
+            file : subCategoryChildImage.buffer, //required
+            fileName : subCategoryChildImage.fileName, //required
+            folder: subCategoryChildImage.folderName,
+        },async function(error, result) {
+            if(error) return res.status(500).json({
+                errors:error.message,
+                card:null,
+            })
+    
+            const uploadImage = {
+                fileId:result.fileId,
+                name:result.name,
+                filePath:result.filePath,
+                url:result.url,
+                height:result.height,
+                width:result.width,
+                thumbnailUrl:result.thumbnailUrl
+            }
+
+
+            subCategoryChild.image = uploadImage;
+            const updatedSubCategoryChild  = await subCategoryChild.save();
+
+
+            if(!updatedSubCategoryChild){
+                return res.status(500).json({
+                    errors:{message:'Error while editing the sub category child'},
+                    data:null
+                })
+            }
+            return res.status(200).json({
+                data:updatedSubCategoryChild,
+                message:'Sub category child updated successfully'
+            })
+
+        })
+    }
     
 
     const updatedSubCategoryChild  = await subCategoryChild.save();

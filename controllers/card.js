@@ -14,6 +14,15 @@ const filterCategoriesRoute = require("../utils/filterCategoriesRoute")
 const {titleProps,statusProps,slugProperties} = require('./inputs/card');
 const  isValidID  =require("../utils/IDvalidator")
 const valideOrientation = ['landscape','portrait','square'];
+const ImageKit = require("imagekit");
+
+
+
+const imagekit = new ImageKit({
+    publicKey : process.env.PUBLICKEY,
+    privateKey :process.env.PRIVATEKEY,
+    urlEndpoint : process.env.URL_ENDPOINT
+});
 
 var options = {
     allowDiskUse: false
@@ -29,7 +38,7 @@ exports.getCard = async (req, res, next) => {
 
     if(categoryId&&cardId){
         const card = await Card.findOne({$and:[{_id:cardId},{'relatedCategories':{$in:categoryId}},{deleted:false}]})
-        .populate([{path:"image",model:'Image'},{path:"category",model:'Category'},{path:"tags",model:'Tag'}])
+        .populate([{path:"category",model:'Category'},{path:"tags",model:'Tag'}])
 
         if(card){
             const tags = card.tags.map(tag=>ObjectID(tag._id))
@@ -49,22 +58,7 @@ exports.getCard = async (req, res, next) => {
             }
 
             const pipeline = [
-                {
-                    $lookup: {
-                        from: "images",
-                        localField: "image",
-                        pipeline: [
-                            {
-                                $project: {
-                                    _id: "$_id",
-                                    path: "$path"
-                                }
-                            }
-                        ],
-                        foreignField: "_id",
-                        as: "image"
-                    }
-                }, 
+         
                 {
                     $match:{
                         $and: [
@@ -75,6 +69,9 @@ exports.getCard = async (req, res, next) => {
                                         $eq: ObjectID(card._id)
                                     }
                                 }
+                            },
+                            {
+                                deleted:false
                             }
                         ]
                     }
@@ -89,12 +86,7 @@ exports.getCard = async (req, res, next) => {
                         views: "$views",
                         title: "$title",
                         slug:  "$slug",
-                        image: {
-                            $arrayElemAt: [
-                                "$image",
-                                0.0
-                            ]
-                        }
+                        image: "$image"
                     }
                 }, 
                 {
@@ -113,12 +105,14 @@ exports.getCard = async (req, res, next) => {
             const category= await card.category.find(cat=>cat.customId===categoryId)
         
             const routeToCard = await filterCategoriesRoute(categoryId)
-            const dim =  await dimensionOf('./'+card.image.path) 
             return res.status(200).json({
                 card:{
                     ...card._doc,
                     category,
-                    dimensions:dim,
+                    dimensions:{
+                        height:card.image.height,
+                        width:card.image.width
+                    },
                     routeToCard,
                     similarCards
                 },
@@ -143,7 +137,7 @@ exports.getAllCardsBySubCategories = async (req, res, next) => {
 
         const pipeline = [
             {
-                $match: {
+                $match:{
                    $and:[
                        type?{cardType: type}:{},
                        {deleted:false}
@@ -167,29 +161,12 @@ exports.getAllCardsBySubCategories = async (req, res, next) => {
                 }
             }, 
             {
-                $lookup: {
-                    from: "images",
-                    localField: "image",
-                    pipeline: [
-                        {
-                            $project: {
-                                "path": "$path"
-                            }
-                        }
-                    ],
-                    foreignField: "_id",
-                    as: "image"
-                }
-            }, 
-            {
                 $project: {
                     _id: "$_id",
                     views: "$views",
                     subCategory: "$subCategory",
                     title: "$title",
-                    image: {
-                        $arrayElemAt:["$image.path",0.0]
-                    }
+                    image: "$image.path",
                 }
             }, 
             {
@@ -220,6 +197,7 @@ exports.getAllCardsBySubCategories = async (req, res, next) => {
                 }
             }
         ];
+
         const results = await Card.aggregate(pipeline).option(options)
  
         if(!results){
@@ -267,22 +245,6 @@ exports.getAllCards = async (req, res, next) => {
 
     const pipeline =[
         {
-            "$lookup": {
-                "from": "images",
-                "localField": "image",
-                "pipeline": [
-                    {
-                        "$project": {
-                            "_id": "$_id",
-                            "path": "$path"
-                        }
-                    }
-                ],
-                "foreignField": "_id",
-                "as": "image"
-            }
-        }, 
-        {
             "$facet": {
                 "cards": [
                     {
@@ -324,12 +286,7 @@ exports.getAllCards = async (req, res, next) => {
                             },
                             "ititle": "$title",
                             "slug": "$slug",
-                            "image": {
-                                "$arrayElemAt": [
-                                    "$image.path",
-                                    0.0
-                                ]
-                            },
+                            "image": "$image",
                             orientation:"$orientation"
                         }
                     }
@@ -374,12 +331,7 @@ exports.getAllCards = async (req, res, next) => {
                             },
                             "ititle": "$title",
                             "slug": "$slug",
-                            "image": {
-                                "$arrayElemAt": [
-                                    "$image.path",
-                                    0.0
-                                ]
-                            },
+                            "image": "$image",
                             orientation:"$orientation"
                         }
                     }
@@ -417,7 +369,6 @@ exports.getAllCards = async (req, res, next) => {
     }
 
     const results = await Card.paginate({deleted:false,...queries},{offset,limit,sort:{createdAt:-1},populate:[
-        {path:"image",model:'Image'},
         {path:"tags",select:"name",model:'Tag',match:{deleted:false}},
         {path:"subCategory",select:"name customId",model:'SubCategory',match:{deleted:false}},
         {path:"subCategoryChildren",select:"name customId",model:'ChildrenSubCategory',match:{deleted:false}},
@@ -425,8 +376,7 @@ exports.getAllCards = async (req, res, next) => {
         {path:"createdBy",select:"userName",model:'User',match:{deleted:false}}
     ]})
 
-
-    const cards = results.docs.map(card=>{({...card._doc,_id:card.relatedCategories[card.relatedCategories.length-1]+'-'+card._id}) })
+    const cards = results.docs.map(card=>({...card._doc,_id:card.relatedCategories[card.relatedCategories.length-1]+'-'+card._id}))
     return res.status(200).json({
         cards:cards,
         currentPage:results.page,
@@ -603,29 +553,16 @@ exports.onSearch = async (req, res, next) => {
     }
     const pipeline = [
         {
-            "$match": {
-                title:{$regex:newQ}
+            "$match":{ 
+                "$and": [
+                    {title:{$regex:newQ}},
+                    {deleted:false}
+                ]
             }
             
         }, 
         {
             "$match": myQuery
-        }, 
-        {
-            "$lookup": {
-                "from": "images",
-                "localField": "image",
-                "pipeline": [
-                    {
-                        "$project": {
-                            "_id": "$_id",
-                            "path": "$path"
-                        }
-                    }
-                ],
-                "foreignField": "_id",
-                "as": "image"
-            }
         }, 
         {
             "$project": {
@@ -643,12 +580,7 @@ exports.onSearch = async (req, res, next) => {
                     ]
                 },
                 "title": "$title",
-                "image": {
-                    "$arrayElemAt": [
-                        "$image",
-                        0.0
-                    ]
-                },
+                "image": "$image",
                 "collectionName": "$collectionName"
             }
         }, 
@@ -813,6 +745,7 @@ exports.createCard = async (req, res, next) => {
     const currentUserId = req.body.currentUserId
     const title = req.body.title.trim();
     const type = req.body.type;
+    const collectionName = req.body.collectionName
     const slug = req.body.slug.trim();
     const description = req.body.description.trim();
     const tags = req.body.tags?JSON.parse(req.body.tags):[];
@@ -885,41 +818,63 @@ exports.createCard = async (req, res, next) => {
     function capitalize(str) {
         return str.charAt(0).toUpperCase() + str.slice(1);
     }
+
+
+
     const newTitle= title.trim().split(' ').map(capitalize).join(' ');
+    const newSlug= slug.trim().split(' ').join('-').toLowerCase();
 
     
 
-    const newSlug= slug.trim().split(' ').join('-').toLowerCase();
-
-
-    const card = new Card({
-        title:newTitle,
-        slug:newSlug,
-        description:description,
-        tags:tags,
-        cardType:type,
-        image:cardImage,
-        orientation:orientation,
-        status:true,
-        relatedCategories:[...new Set(relatedCategories)],
-        category:categoryIds,
-        subCategory:subCategoryIds,
-        subCategoryChilden:subCategoryChildrenIds,
-        createdBy:currentUserId
-    })
-
-
-    const savedCard = await card.save();
-    if(savedCard){
-        return res.status(201).json({
-            card:savedCard,
-            message:'Card created successfully'
+    imagekit.upload({
+        file : cardImage.buffer, //required
+        fileName : cardImage.fileName, //required
+        folder: cardImage.folderName,
+    }, async function(error, result) {
+        if(error) return res.status(500).json({
+            errors:error.message,
+            card:null,
         })
-    }
-    return res.status(500).json({
-        card:null,
-        errors:{message:'Error while saving the new card'}
-    })
+
+        const uploadImage = {
+            fileId:result.fileId,
+            name:result.name,
+            filePath:result.filePath,
+            url:result.url,
+            height:result.height,
+            width:result.width,
+            thumbnailUrl:result.thumbnailUrl
+        }
+
+        const card = new Card({
+            title:newTitle,
+            slug:newSlug,
+            description:description,
+            tags:tags,
+            cardType:type,
+            image:uploadImage,
+            orientation:orientation,
+            collectionName:collectionName,
+            status:true,
+            relatedCategories:[...new Set(relatedCategories)],
+            category:categoryIds,
+            subCategory:subCategoryIds,
+            subCategoryChilden:subCategoryChildrenIds,
+            createdBy:currentUserId
+        })
+        const savedCard = await card.save();
+        if(savedCard){
+            return res.status(201).json({
+                card:savedCard,
+                message:'Card created successfully'
+            })
+        }
+        return res.status(500).json({
+            card:null,
+            errors:{message:'Error while saving the new card'}
+        })
+    });
+    
 }
 
 //! ----- EDIT A CARD ----------
@@ -1017,7 +972,6 @@ exports.updateCard = async (req, res, next) => {
 
     card.title = newTitle;
     card.slug = newSlug;
-    cardImage?card.image = cardImage:null
     card.description = description;
     card.category = categoryIds ;
     card.subCategory = subCategoryIds;
@@ -1028,19 +982,56 @@ exports.updateCard = async (req, res, next) => {
     card.status = status;
     card.updatedBy= currentUserId
 
+    const isObject = (value) => typeof value === "object" && value !== null
 
-    const updatedCard = await card.save()
+    if(isObject(cardImage)){
+        imagekit.upload({
+            file : cardImage.buffer, //required
+            fileName : cardImage.fileName, //required
+            folder: cardImage.folderName,
+        }, async function(error, result) {
+            if(error) return res.status(500).json({
+                errors:error.message,
+                card:null,
+            })
+    
+            const uploadImage = {
+                fileId:result.fileId,
+                name:result.name,
+                filePath:result.filePath,
+                url:result.url,
+                height:result.height,
+                width:result.width,
+                thumbnailUrl:result.thumbnailUrl
+            }
+    
+            card.image = uploadImage
+            const updatedCard = await card.save().then(card=>card.populate(['category','subCategory','subCategoryChildren','tags','createdBy']).execPopulate())
+            console.log('UpdatedCard:',updatedCard)
+            if(updatedCard){
+                return res.status(200).json({
+                    data:updatedCard,
+                    message:'Card updated successfully'
+                })
+            }
+            return res.status(500).json({
+                errors:{message:"Error while editing the card"}
+            })
+        });
+    }else{
 
-
-    if(updatedCard){
-        return res.status(200).json({
-            data:updatedCard,
-            message:'Card updated successfully'
+        const updatedCard = await card.save().then(card=>card.populate(['category','subCategory','subCategoryChildren','tags','createdBy']).execPopulate())
+    
+        if(updatedCard){
+            return res.status(200).json({
+                data:updatedCard,
+                message:'Card updated successfully'
+            })
+        }
+        return res.status(500).json({
+            errors:{message:"Error while editing the card"}
         })
     }
-    return res.status(500).json({
-        errors:{message:"Error while editing the card"}
-    })
     
 }
 
@@ -1068,5 +1059,16 @@ exports.deleteCard = async (req, res, next) => {
 
     return res.status(403).json({
         errors:{message:'Not authorised to delete a card'}
+    })
+}
+
+exports.getImage = async (req, res, next) => {
+    const image = req.body.image;
+
+    
+
+    return res.status(200).json({
+        message: "image uploaded",
+        image
     })
 }

@@ -48,7 +48,7 @@ module.exports = async (input,properties)=>{
         }
     
         if(isAlphabets===true){
-            const regex = /^[A-Za]+$/
+            const regex = /^[a-zA-Z ]*$/
             if(!regex.test(input)){
                 return results =({
                   [inputName]: `${inputName} input takes only alphabets!`,

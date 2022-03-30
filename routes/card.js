@@ -4,7 +4,7 @@ const checkAuth = require("../middlewares/auth");
 const uploadImage = require("../middlewares/imageUpload");
 const {WithPublicSession} = require("../utils/session");
 
-const  {onSearch,onView,onDownload,getCard,getAllCards,createCard, updateCard,deleteCard, getAllCardsBySubCategories, createImage}= require('../controllers/card')
+const  {getImage,onSearch,onView,onDownload,getCard,getAllCards,createCard, updateCard,deleteCard, getAllCardsBySubCategories}= require('../controllers/card')
 
 
 router.get("/", getAllCards);
@@ -16,6 +16,8 @@ router.get("/search", onSearch);
 router.get("/:id", getCard);
 
 router.post("/new", checkAuth,uploadImage('cardImage'), createCard);
+
+router.post("/image/new",uploadImage('uploadImage'), getImage);
 
 router.patch("/views",WithPublicSession(onView));
 

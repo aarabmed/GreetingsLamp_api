@@ -7,7 +7,7 @@ module.exports ={
                 isEmpty:false
             },
             {
-                isAlphabets:true
+                isAlphabets:false
             }
         ]
     },
@@ -54,7 +54,7 @@ module.exports ={
             }
             ,
             {
-                isAlphabets:true,
+                isAlphabets:false,
             },
         ]
     },

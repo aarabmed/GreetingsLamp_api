@@ -9,6 +9,15 @@ const isBoolean = require('../utils/toBoolean');
 const {nameProperties,slugProperties,titleProperties,statusProperties,descriptionProperties,imageProperties} = require('./inputs/collection')
 
 const {authorities}= require('../utils/authority');
+const ImageKit = require("imagekit");
+
+
+
+const imagekit = new ImageKit({
+    publicKey : process.env.PUBLICKEY,
+    privateKey :process.env.PRIVATEKEY,
+    urlEndpoint : process.env.URL_ENDPOINT
+});
 
 
 //! ----- RETRIEVE A SINGLE COLLECTION ----------
@@ -16,22 +25,20 @@ exports.getCollection = async (req, res, next) => {
     const id = req.params.id
     const collection = await Collection.findById({_id:id},{deleted:false})
     .populate([{   
-                    path:"category",select:"name status slug backgroundColor description title createdAt updatedAt",model:'Category',match:{deleted:false},
+                    path:"category",select:" image name status slug backgroundColor description title createdAt updatedAt",model:'Category',match:{deleted:false},
                     populate:[{
                         path:"subCategory",
-                        select:"name status slug description title backgroundColor createdAt updatedAt category",
+                        select:"image name status slug description title backgroundColor createdAt updatedAt category",
                         match:{deleted:false},
                             populate:[{
                                 path:"childrenSubCategory",
-                                select:"name status slug backgroundColor title description createdAt updatedAt",
+                                select:"image name status slug backgroundColor title description createdAt updatedAt",
                                 match:{deleted:false},
-                                populate:{path:"image",model:'Image'}
                             },
-                            {path:"image",model:'Image'}
+                            
                         ],
-                    },{path:"image",model:'Image'}]
-            },{path:"image",model:'Image'}
-    ]);
+                    }]
+    }]);
 
     return res.status(200).json({
         collection:collection,
@@ -43,30 +50,24 @@ exports.getCollection = async (req, res, next) => {
 //! ----- RETRIEVE ALL COLLECTION ----------
 exports.getAllCollections = async (req, res, next) => {
     const collections = await Collection.find({deleted:false}).populate([
-        {path:"category",select:"name status slug backgroundColor description title createdAt updatedAt",model:'Category',match:{deleted:false},
+        {path:"category",select:"image name status slug backgroundColor description title createdAt updatedAt",model:'Category',match:{deleted:false},
             populate:[
                 {
                     path:"subCategory",
-                    select:"name status slug description title backgroundColor createdAt updatedAt category ",
+                    select:"image name status slug description title backgroundColor createdAt updatedAt category ",
                     model:'SubCategory',
                     match:{deleted:false},
                         populate:[
                             {
                                 path:"childrenSubCategory",
-                                select:"name status slug backgroundColor title description createdAt updatedAt",
+                                select:"image name status slug backgroundColor title description createdAt updatedAt",
                                 model:'ChildrenSubCategory',
                                 match:{deleted:false},
-                                populate:{path:"image",model:'Image'}
-                            },
-                            {path:"image",model:'Image'}
+                            }
                         ],
-                },{
-                    path:"image",
-                    model:'Image',
                 }
             ]
-        },{path:"image",model:'Image'}
-    ]);
+        }]);
 
 
     return res.status(200).json({
@@ -116,31 +117,55 @@ exports.createCollection = async (req, res, next) => {
     const newName= name.trim().split(' ').map(capitalize).join(' ');
     const newTitle= title.trim().split(' ').map(capitalize).join(' ');
     const newSlug= slug.trim().split(' ').join('-').toLowerCase();
-       
-   
-    const collection =  new Collection({
-        name:newName,
-        description:description,
-        title:newTitle,
-        image:collectionImage,
-        slug:newSlug,
-        createdBy:currentUserId
-    })
-
-    const savedCollection  = await collection.save();
-   
+      
     
-    if(savedCollection){  
-        return res.status(201).json({
-            collection:savedCollection,
-            message:'Collection saved successfully'
-        })
-    }
 
-    return res.status(500).json({
-        collection:null,
-        errors:{message:'Server failed to create the current Collection'}
+    imagekit.upload({
+        file : collectionImage.buffer, //required
+        fileName : collectionImage.fileName, //required
+        folder: collectionImage.folderName,
+    },async function(error, result) {
+        if(error) return res.status(500).json({
+            errors:error.message,
+            card:null,
+        })
+
+        const uploadImage = {
+            fileId:result.fileId,
+            name:result.name,
+            filePath:result.filePath,
+            url:result.url,
+            height:result.height,
+            width:result.width,
+            thumbnailUrl:result.thumbnailUrl
+        }
+
+        const collection =  new Collection({
+            name:newName,
+            description:description,
+            title:newTitle,
+            image:uploadImage,
+            slug:newSlug,
+            createdBy:currentUserId
+        })
+
+        const savedCollection  = await collection.save();
+       
+        
+        if(savedCollection){  
+            return res.status(201).json({
+                collection:savedCollection,
+                message:'Collection saved successfully'
+            })
+        }
+    
+        return res.status(500).json({
+            collection:null,
+            errors:{message:'Server failed to create the current Collection'}
+        })
+    
     })
+   
 }
 
 
@@ -191,10 +216,51 @@ exports.updateCollection = async (req, res, next) => {
     collection.title = newTitle;
     collection.status = status;
     collection.updatedBy = currentUserId
-    collectionImage?collection.image=collectionImage:null;
+    
+
+    const isObject = (value) => typeof value === "object" && value !== null
+
+    if(isObject(collectionImage)){
+        imagekit.upload({
+            file : collectionImage.buffer, //required
+            fileName : collectionImage.fileName, //required
+            folder: collectionImage.folderName,
+        },async function(error, result) {
+            if(error) return res.status(500).json({
+                errors:error.message,
+                card:null,
+            })
+    
+            const uploadImage = {
+                fileId:result.fileId,
+                name:result.name,
+                filePath:result.filePath,
+                url:result.url,
+                height:result.height,
+                width:result.width,
+                thumbnailUrl:result.thumbnailUrl
+            }
+        
+
+            collection.image=uploadImage;
+            const updatedCollection  = await collection.save();
+
+            if(!updatedCollection){
+                return res.status(500).json({
+                    collection:null,
+                    errors:{message:'Server failed to update the current Collection'}
+                })
+            }
+
+            return res.status(200).json({
+                collection:updatedCollection,
+                message:'Collection updated successfully'
+            })
+
+        })
+    }
     
     const updatedCollection  = await collection.save();
-
     if(!updatedCollection){
         return res.status(500).json({
             collection:null,
@@ -205,7 +271,7 @@ exports.updateCollection = async (req, res, next) => {
     return res.status(200).json({
         collection:updatedCollection,
         message:'Collection updated successfully'
-    })
+    }) 
 }
 
 

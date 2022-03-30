@@ -1,12 +1,7 @@
 const multer = require('multer');
-const ImageKit = require("imagekit");
 
 
-const imagekit = new ImageKit({
-    publicKey : process.env.PUBLICKEY,
-    privateKey :process.env.PRIVATEKEY,
-    urlEndpoint : process.env.URL_ENDPOINT
-});
+
 
 const fileFilter = (req, file, cb)=>{
     if(file.mimetype === 'image/png' || 
@@ -42,28 +37,16 @@ module.exports=(value)=> (req, res, next) =>{
 
         if(!req.file){
             req.body.image = null 
-            next()
+           return next()
         }
 
-        const ImageFolder = req.file.fieldname.replace('image','')
-        imagekit.upload({
-            file : req.file.buffer, //required
-            fileName : req.file.originalname, //required
-            folder:ImageFolder,
-        }, function(error, result) {
-            if(error) console.log(error);
-            const image = {
-                fileId:result.fileId,
-                name:result.name,
-                filePath:result.filePath,
-                url:result.url,
-                height:result.height,
-                width:result.width,
-                thumbnailUrl:result.thumbnailUrl
-            }
-            req.body.image = image
-            next();
-        });
-        
+        const ImageFolder = req.file.fieldname.replace('image','')    
+        const image = {
+            buffer:req.file.buffer,
+            fileName:req.file.originalname,
+            folderName:ImageFolder,
+        }
+        req.body.image = image
+        next();
     });
 }

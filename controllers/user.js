@@ -8,32 +8,6 @@ const {authorities, valideAuthority}= require('../utils/authority');
 const toBoolean = require('../utils/toBoolean');
 
 
-//! ----- Create A NEW USER ----------
-exports.newUser = async (req, res, next) => {
-    const userId = req.params.currentUserId;  
-    const user = await User.findOne({_id:userId,deleted:false})
-    if(!user){
-        return res.status(404).json({
-            date:null,
-            message:'No user have been found with the provided ID, try again'
-        })
-    }
-
-    const data= {
-        userName:user.userName,
-        authority:user.authority,
-        status:user.status,
-        avatar:user.avatar,
-        email:user.email,
-        createdAt:user.createdAt.toISOString(),
-        updatedAt:user.updatedAt.toISOString()
-    }
-
-    return res.status(200).json({
-        data,
-        message:'Operation succeeded'
-    })
-}
 
 
 //! ----- CREATE A NEW USER ----------
@@ -157,7 +131,7 @@ exports.getUser = async (req, res, next) => {
 //! ----- RETRIEVE ALL USERS ----------
 exports.getAllUsers = async (req, res, next) => {
     const userId = req.userId
-    const users = await User.find({deleted:false,_id:{$ne:userId}});
+    const users = await User.find({deleted:false,_id:{$ne:{_id:userId}}});
     if(!users.length){
         return res.status(404).json({
             date:null,
