@@ -14,12 +14,12 @@ const {WithuAuthSession} = require("./utils/session")
 const  cors = require('cors')
  
 const app = express();
-// app.use(express.json());
+
 app.use(bodyParser.urlencoded({extended: true}));
 app.use(bodyParser.json());
 
 
-const whitelist = ['http://localhost:7000','https://greetingslamp-admin.herokuapp.com']
+const whitelist = ['http://localhost:7000','https://greetingslamp-admin.herokuapp.com','https://greetingslamp.herokuapp.com']
 const corsOptions = {
     origin: (origin, callback) => {
         if (whitelist.indexOf(origin) !== -1 || !origin) {
@@ -33,18 +33,7 @@ const corsOptions = {
 }
 
 app.use(cors(corsOptions))
-/* app.use((req,res,next)=>{
-    res.header("Access-Control-Allow-Origin", "*");
-    res.header(
-      "Access-Control-Allow-Headers",
-      "Origin, X-Requested-With, Content-Type, Accept, Authorization"
-    );
-    if (req.method === "OPTIONS") {
-      res.header("Access-Control-Allow-Methods", "PUT, POST, PATCH, DELETE, GET");
-      return res.status(200).json({});
-    }
-    next()
-}) */
+
 
 app.use("/account",accountRoute);
 app.use("/users",userRoutes);
