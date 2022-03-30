@@ -166,7 +166,7 @@ exports.getAllCardsBySubCategories = async (req, res, next) => {
                     views: "$views",
                     subCategory: "$subCategory",
                     title: "$title",
-                    image: "$image.path",
+                    image: "$image.filePath",
                 }
             }, 
             {
