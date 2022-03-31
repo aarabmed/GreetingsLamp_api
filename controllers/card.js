@@ -9,7 +9,6 @@ const validate = require('../utils/inputErrors')
 const isBoolean = require('../utils/toBoolean');
 const {getPagination,queryBy} = require('../utils/getPagination');
 const {authorities}= require('../utils/authority')
-const  dimensionOf = require("image-size") 
 const filterCategoriesRoute = require("../utils/filterCategoriesRoute")
 const {titleProps,statusProps,slugProperties} = require('./inputs/card');
 const  isValidID  =require("../utils/IDvalidator")
@@ -859,7 +858,7 @@ exports.createCard = async (req, res, next) => {
             relatedCategories:[...new Set(relatedCategories)],
             category:categoryIds,
             subCategory:subCategoryIds,
-            subCategoryChilden:subCategoryChildrenIds,
+            subCategoryChildren:subCategoryChildrenIds,
             createdBy:currentUserId
         })
         const savedCard = await card.save();
