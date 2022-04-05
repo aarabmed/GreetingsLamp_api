@@ -19,7 +19,7 @@ app.use(bodyParser.urlencoded({extended: true}));
 app.use(bodyParser.json());
 
 
-const whitelist = ['http://localhost:7000','https://greetingslamp-admin.herokuapp.com','https://greetingslamp.herokuapp.com']
+const whitelist = ['http://localhost:7000','https://greetingslamp-admin.herokuapp.com','https://greetingslamp.herokuapp.com','http://greetingslamp.com','https://greetingslamp.com']
 const corsOptions = {
     origin: (origin, callback) => {
         if (whitelist.indexOf(origin) !== -1 || !origin) {
