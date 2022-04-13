@@ -12,8 +12,7 @@ router.get("/:title", async(req,res,next)=>{
     const isMp4 = title.split('-').includes('mobile')
     const videoPath = isMp4?`./videos/${title}.mp4`:`./videos/${title}.webm`
     const videoSize = fs.statSync(videoPath).size;
-    const CHUNK_SIZE = 10 ** 5*2
-
+    const CHUNK_SIZE = (10 ** 5)/2
     const start = Number(range.replace(/\D/g, ""));
     const end = Math.min(start + CHUNK_SIZE, videoSize - 1);
 
