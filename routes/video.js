@@ -9,7 +9,8 @@ router.get("/:title", async(req,res,next)=>{
         res.status(400).send("Requires Range header");
     }
 
-    const videoPath = `./videos/${title}.webm`
+    const isMp4 = title.split('-').includes('mobile')
+    const videoPath = isMp4?`./videos/${title}.mp4`:`./videos/${title}.webm`
     const videoSize = fs.statSync(videoPath).size;
     const CHUNK_SIZE = 10 ** 5*2
 
