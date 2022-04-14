@@ -9,7 +9,6 @@ const cardRoute = require('./routes/card');
 const accountRoute = require('./routes/account');
 const collectionRoute = require('./routes/collection');
 const sessionRoute = require('./routes/session');
-const videoRoute = require('./routes/video');
 
 const  cors = require('cors')
  
@@ -34,7 +33,6 @@ const corsOptions = {
 
 app.use(cors(corsOptions))
 
-app.use("/video",videoRoute);
 app.use("/account",accountRoute);
 app.use("/users",userRoutes);
 app.use("/cards",cardRoute);
