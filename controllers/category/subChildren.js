@@ -46,6 +46,8 @@ exports.createSubCategoryChild = async (req, res, next) => {
     const bgColor = req.body.backgroundColor.trim();
     const description = req.body.description.trim();
     const subCategoryChildImage = req.body.image;
+    const customId = req.body.customId
+
     
     
     const isError = [
@@ -102,6 +104,7 @@ exports.createSubCategoryChild = async (req, res, next) => {
             backgroundColor:bgColor,
             subCategory:subCategoryId,
             createdBy:currentUserId,
+            customId
         })
     
         

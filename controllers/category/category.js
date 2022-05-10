@@ -66,6 +66,7 @@ exports.createCategory = async (req, res, next) => {
     const collectionId = req.body.collection
     const slug = req.body.slug.trim()
     const title = req.body.title.trim()
+    const customId = req.body.customId
     const bgColor = req.body.backgroundColor.trim();
     const description = req.body.description.trim();
     const categoryImage = req.body.image;
@@ -138,7 +139,8 @@ exports.createCategory = async (req, res, next) => {
             slug:newSlug,
             backgroundColor:bgColor??bgColor,
             createdBy:currentUserId,
-            collectionName:collectionId
+            collectionName:collectionId,
+            customId
         })
 
         const savedCategory  = await category.save();

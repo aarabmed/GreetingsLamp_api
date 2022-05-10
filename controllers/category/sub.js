@@ -66,6 +66,7 @@ exports.createSubCategory = async (req, res, next) => {
     const name = req.body.name.trim();
     const slug = req.body.slug.trim();
     const title = req.body.title.trim();
+    const customId = req.body.customId
     const bgColor = req.body.backgroundColor.trim();
     const description = req.body.description.trim();
     const subCategoryImage = req.body.image;
@@ -124,6 +125,7 @@ exports.createSubCategory = async (req, res, next) => {
             backgroundColor:bgColor,
             category:categoryId,
             createdBy:currentUserId,
+            customId
         })
         
         const savedSubCategory  = await subCategory.save();
