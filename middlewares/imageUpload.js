@@ -40,7 +40,7 @@ module.exports=(value)=> (req, res, next) =>{
            return next()
         }
 
-        const ImageFolder = req.file.fieldname.replace('image','')    
+        const ImageFolder = req.file.fieldname.replace('Image','')    
         const image = {
             buffer:req.file.buffer,
             fileName:req.file.originalname,
